@@ -23,4 +23,140 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+
 }
+/* ID Card root (ukuran kartu) */
+.idcard-root {
+  width: 360px;
+  aspect-ratio: 2 / 3;  
+  max-width: 92vw;
+  margin: 0 auto;
+  perspective: 1100px;
+  position: relative;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+
+
+/* sheet yang diputar */
+.idcard-sheet {
+  width: 100%;
+  height: calc(100% + 0px);
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.9s cubic-bezier(.2,.8,.2,1);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* saat flipped */
+.idcard-sheet.is-flipped {
+  transform: rotateY(180deg);
+}
+
+/* setiap sisi kartu (front/back) */
+.idcard-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* back face harus dibalik 180deg */
+.idcard-back {
+  transform: rotateY(180deg);
+}
+
+/* background image fill */
+.bg-img {
+  object-fit: cover;
+}
+
+/* ===== overlay content positioning (sesuaikan via var) ===== */
+/* variabel yang sering diubah */
+:root {
+  --avatar-size: 34%;     /* lebar avatar relatif terhadap lebar kartu */
+  --avatar-top: 18%;      /* jarak dari atas kartu ke pusat avatar (percent) */
+  --name-top-offset: 56%; /* jarak dari atas ke teks nama */
+  --social-top-offset: 66%;/* jarak dari atas ke teks social */
+}
+
+/* container overlay (di atas bg image) */
+.idcard-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* klik diteruskan ke sheet (untuk flip) */
+}
+
+/* avatar wrapper untuk mengontrol ukuran dan border */
+.avatar-wrap {
+  position: absolute;
+  left: 50%;
+  /* avatar diset responsive via var */
+  width: var(--avatar-size);
+  aspect-ratio: 1 / 1;
+  transform: translateX(-50%);
+  top: var(--avatar-top);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  border: 6px solid rgba(255,255,255,0.95);
+}
+
+/* next/image fill inside avatar-wrap */
+.avatar-img {
+  object-fit: cover;
+}
+
+/* teks (nama & social) */
+.text-wrap {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 88%;
+  text-align: center;
+  pointer-events: none;
+}
+
+.name {
+  position: absolute;
+  top: var(--name-top-offset);
+  left: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  font-weight: 800;
+  font-size: clamp(18px, 4.2vw, 28px);
+  color: #000000; /* ubah kalau mau putih atau lain */
+  letter-spacing: 0.6px;
+}
+
+.social {
+  position: absolute;
+  top: var(--social-top-offset);
+  left: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  font-weight: 600;
+  font-size: clamp(14px, 3.2vw, 18px);
+  color: rgba(0,0,0,0.85);
+}
+
+/* tombol kembali */
+.btn-back {
+  position: absolute;
+  bottom: -2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  pointer-events: auto;
+  font-weight: 600;
+}
+
+/* debug helper — hapus/disable kalau sudah pas */
+.idcard-root.debug .avatar-wrap { outline: 2px dashed rgba(255,0,0,0.5); }
+.idcard-root.debug .name { outline: 2px dashed rgba(0,0,255,0.3); }
+.idcard-root.debug .social { outline: 2px dashed rgba(0,255,0,0.3); }
+
