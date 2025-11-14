@@ -18,6 +18,102 @@ function AuroraParallaxSync() {
 
   return null;
 }
+export function useCanvasRecorder() {
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+
+  const startRecording = (canvas: HTMLCanvasElement) => {
+    return new Promise<void>((resolve) => {
+      // --- OFFSCREEN CANVAS UNTUK RECORDING (RESOLUSI 720p RASIO 3:4) ---
+      const recCanvas = document.createElement("canvas");
+      recCanvas.width = 720;  // width
+      recCanvas.height = 960; // height (720 * 4/3)
+
+      const recCtx = recCanvas.getContext("2d");
+
+      // Copy frame dari canvas utama ke canvas recording
+      const copyFrame = () => {
+        const copyFrame = () => {
+  if (!recCtx) return;
+
+  const srcW = canvas.width;
+  const srcH = canvas.height;
+  const targetRatio = 3 / 4;
+  const currentRatio = srcW / srcH;
+
+  let sx = 0, sy = 0, sw = srcW, sh = srcH;
+
+  if (currentRatio > targetRatio) {
+    // Canvas terlalu lebar → crop kiri & kanan
+    sw = srcH * targetRatio;
+    sx = (srcW - sw) / 2;
+  } else {
+    // Canvas terlalu tinggi → crop atas & bawah
+    sh = srcW / targetRatio;
+    sy = (srcH - sh) / 2;
+  }
+
+  recCtx.drawImage(
+    canvas,
+    sx, sy, sw, sh,            // area crop
+    0, 0, recCanvas.width, recCanvas.height // hasil 3:4
+  );
+
+  requestAnimationFrame(copyFrame);
+};
+        requestAnimationFrame(copyFrame);
+      };
+      copyFrame();
+      // ------------------------------------------------------------
+
+      const stream = recCanvas.captureStream(60);
+
+      const recorder = new MediaRecorder(stream, {
+        mimeType: "video/webm; codecs=vp9"
+      });
+
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+      setIsRecording(true);
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "card-animation-720p-3x4.webm";
+        a.click();
+
+        URL.revokeObjectURL(url);
+
+        setIsRecording(false);
+        resolve();          // ⭐ penting → tombol bisa aktif lagi
+      };
+
+      recorder.start();
+
+      // Auto stop after 4 seconds
+      setTimeout(() => recorder.stop(), 4000);
+    });
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+  };
+
+  return { startRecording, stopRecording, isRecording };
+}
+
+
+
+
 function AuroraLiteFogSphereGradientV3({
   radius = 6,
   intensity = 0.95,
@@ -789,7 +885,7 @@ function DynamicAuroraBackground() {
 
 
 
-export default function Page() {
+  export default function Page() {
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -811,6 +907,8 @@ export default function Page() {
 const [auroraSpinSpeed, setAuroraSpinSpeed] = useState(0.06);
 const [fogDensity, setFogDensity] = useState(0.55);
 const [fogSpeed, setFogSpeed] = useState(0.08);
+const canvasRef = useRef<HTMLCanvasElement>(null);
+const { startRecording, stopRecording, isRecording } = useCanvasRecorder();
 
 
   useEffect(() => {
@@ -871,9 +969,24 @@ const [fogSpeed, setFogSpeed] = useState(0.08);
         <main className="mx-auto max-w-6xl px-4 pb-14 grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Viewer — MOBILE FIRST ATAS */}
           <section className="order-1 lg:order-2 lg:col-span-8 rounded-3xl border border-white/10 bg-white/5 p-2">
-            <div className="h-[70vh] rounded-2xl overflow-hidden relative">
-              {/* Fractal Aurora 3D Background */}
-            <Canvas shadows camera={{ position: [0.25, 0.2, 0.45], fov: 25 }}>
+<div
+  className="
+    w-full
+    aspect-[3/4]      /* MOBILE → 3:4 */
+    md:h-[70vh]       /* DESKTOP → 70vh */
+    md:aspect-auto    /* DESKTOP → bebas */
+    rounded-2xl
+    overflow-hidden
+    relative
+  "
+>  <Canvas
+    className="!w-full !h-full absolute inset-0"
+    ref={canvasRef}
+    dpr={[1, 2]}
+  gl={{ preserveDrawingBuffer: true }}
+            shadows camera={{ position: [0.25, 0.2, 0.45], fov: 25 }}
+      
+  >
   <AuroraParallaxSync />
 
   {/* Background & Atmosfer */}
@@ -947,10 +1060,21 @@ const [fogSpeed, setFogSpeed] = useState(0.08);
                 >
                   {busy ? "Generating…" : "Generate"}
                 </button>
+                  <button
+  onClick={async () => {
+    if (!isRecording && canvasRef.current) {
+      onGenerate();                   // 🔥 animasi putar
+      await startRecording(canvasRef.current); // 🎥 record 4 detik + download
+    }
+  }}
+  disabled={isRecording}
+  className="w-full rounded-2xl bg-white/20 backdrop-blur-lg text-white py-2 font-medium disabled:opacity-50"
+>
+  Download Video
+</button>
+
               </div>
             </div>
-
-    
 
             {/* Previews + Download */}
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
